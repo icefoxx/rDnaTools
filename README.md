@@ -30,8 +30,8 @@ included in the Pacific Biosciences SMRT Analysis suite.
 ## Primary Tools ##
 
 rDnaTools contains two primary tools for analyzing rDNA sequence data
-1. rDnaPipeline
-2. rDnaResequencer
+* rDnaPipeline
+* rDnaResequencer
 
 The rDnaPipeline takes as an input PacBio sequence data from ribosomal
 DNA amplicons, in either FOFN, BAS.H5, FASTA, or FASTQ formate, and runs a
