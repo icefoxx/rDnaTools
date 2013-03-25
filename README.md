@@ -1,17 +1,17 @@
 # rDnaTools #
 
-rDnaTools is a python package of tools and pipelines for working with 
-ribosomal DNA sequence data generated with the PacBio(R) SMRT sequencing.  
+rDnaTools is a python package of tools and pipelines for working with
+ribosomal DNA sequence data generated with the PacBio(R) SMRT sequencing.
 rDnaTools works by wrapping existing tools from microbial ecology,
-primarily the Mothur suite of utilities, 
+primarily the Mothur suite of utilities.
 
 Currently rDnaTools implements a single pipeline for the export, filtering,
 and cluster of 16S sequences.  Future releases will include automated
 pipelines for other use-cases, as well as the capability for users to
 script their own pipelines for rDNA sequence analysis.
 
-Though primarily intended for use in analyzing 16S rDNA sequences, the 
-same tools and approaches should apply equally well to 18S, 23S, or ITS 
+Though primarily intended for use in analyzing 16S rDNA sequences, the
+same tools and approaches should apply equally well to 18S, 23S, or ITS
 sequences, provided that suitable reference sequences are supplied.
 
 ## Requirements ##
@@ -29,7 +29,7 @@ included in the Pacific Biosciences SMRT Analysis suite.
 
 ## Primary Tools ##
 
-rDnaTools contains two primary tools for analyzing rDNA sequence data:
+rDnaTools contains two primary tools for analyzing rDNA sequence data
 1. rDnaPipeline
 2. rDnaResequencer
 
