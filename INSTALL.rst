@@ -9,6 +9,7 @@ Installing and running the HBAR-DTK scripts
 
 
 Prerequisites:
+
 * A UNIX-derived operating system
 * gcc >4.4.3
 * python 2.7
@@ -16,6 +17,7 @@ Prerequisites:
 * blasr ( https://github.com/PacificBiosciences/blasr )
 
 Optional:
+
 * Quiver from SMRTAnalysis > v1.4 ( from http://pacbiodevnet.com ) 
   This is only required for creating cluster consensus sequences
 
@@ -46,7 +48,8 @@ Mothur is a widely used interactive tool for carrying out the analysis of
 pipeline that don't require special tools to accomodate SMRT sequencing
 data, rDnaTools simply wraps that functionality from Mothur.
 
-To download and install local binaries in the Virtual Environment::
+To download and install local binaries in the Virtual Environment and
+add them to the local PATH::
     $ cd bin/
     $ wget http://www.mothur.org/w/images/8/88/Mothur.cen_64.zip
     $ unzip Mothur.cen_64.zip -d Mothur_Dist
@@ -78,7 +81,8 @@ and install ``libhdf5`` in the virtualenv::
     $ make install
     $ cd $RDNA_HOME
 
-Finally, we can install Install ``h5py`` ( http://h5py.googlecode.com/ )::
+Finally, we can install ``h5py`` ( http://h5py.googlecode.com/ ) to our
+local python environment::
     $ cd bin/
     $ wget http://h5py.googlecode.com/files/h5py-2.0.1.tar.gz
     $ tar zxvf h5py-2.0.1.tar.gz
