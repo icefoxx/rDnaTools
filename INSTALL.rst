@@ -94,7 +94,8 @@ local python environment::
 Installing PacBio-specific Python Libraries
 -------------------------------------------
 
-Now we can finally install the PacBio python libraries and rDnaTools::
+Now we can finally install the PacBio python libraries 
+and rDnaTools::
     $ pip install git+https://github.com/PacificBiosciences/pbcore.git
     $ pip install git+https://github.com/bnbowman/rDnaTools.git
 
