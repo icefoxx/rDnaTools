@@ -35,7 +35,7 @@ rDnaTools contains two primary tools for analyzing rDNA sequence data
 
 The rDnaPipeline takes as an input PacBio sequence data from ribosomal
 DNA amplicons, in either FOFN, BAS.H5, FASTA, or FASTQ formate, and runs a
-sequential series of analyses, similar to Mothur''s Batch Mode.
+sequential series of analyses, similar to Mothur`s Batch Mode.
 
 The rDnaResequencer tool generates consensus sequences from clusters of
 PacBio ribosomal DNA sequences.  The Resequencer tool can be called either
