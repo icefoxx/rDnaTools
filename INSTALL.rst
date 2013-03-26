@@ -1,5 +1,5 @@
-Installing and running the HBAR-DTK scripts
-===========================================
+Installing rDnaTools and Dependencies
+=====================================
 
 :Authors: Brett Bowman
 
