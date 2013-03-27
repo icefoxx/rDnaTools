@@ -1,6 +1,14 @@
 import os
 import sys
 
+from collections import namedtuple
+
+BlasrM1 = namedtuple('BlasrM1', ['qname', 'tname', 'qstrand', 'tstrand',
+                                 'score', 'pctsimilarity', 
+                                 'tstart', 'tend', 'tlength',
+                                 'qstart', 'qend', 'qlength',
+                                 'ncells'])
+
 def fileExists( filename ):
     return os.path.exists(filename) and (os.path.getsize(filename) > 0)
 
@@ -25,9 +33,27 @@ def createDirectory( dirName ):
         raise OSError('Could not create directory "%s"!' % dirName)
     return dirName
 
+def which(program):
+    """
+    Find and return path to local executables  
+    """
+    fpath, fname = os.path.split(program)
+    if fpath:
+        if isExe(program):
+            return program
+    else:
+        for path in os.environ["PATH"].split(os.pathsep):
+            path = path.strip('"')
+            exeFile = os.path.join(path, program)
+            if isExe(exeFile):
+                return exeFile
+    return None
+
 def validateInputFile( fileName, allowedSuffixes ):
+    allowedSuffixes = [allowedSuffixes] if isinstance(str, type(allowedSuffixes)) \
+                                        else allowedSuffixes
     # First we check whether the input file has a valid suffix
-    try: 
+    try:            
         assert any( [fileName.endswith(suffix) for suffix in allowedSuffixes] )
     except AssertionError:
         raise ValueError('File does not have an allowed suffix! %s' % \
@@ -45,18 +71,48 @@ def validateOutputFile( fileName ):
         return fileName
     return os.path.abspath( fileName )
 
-def which(program):
-    """
-    Find and return path to local executables  
-    """
-    fpath, fname = os.path.split(program)
-    if fpath:
-        if isExe(program):
-            return program
-    else:
-        for path in os.environ["PATH"].split(os.pathsep):
-            path = path.strip('"')
-            exeFile = os.path.join(path, program)
-            if isExe(exeFile):
-                return exeFile
-    return None
+def validateExecutable( executable ):
+    exePath = which( executable )
+    try: 
+        assert exePath is not None
+    except AssertionError:
+        raise ValueError('"%s" is not a valid executable!' % executable)
+    return exePath
+
+def validateInt( integer, minValue=None, maxValue=None ):
+    try: # First we check whether the supplied parameter is an Int
+        assert isinstance(integer, int)
+    except AssertionError:
+        raise TypeError('Parameter is not an Integer!')
+    # If a minimum value is supplied, compare it to the Integer
+    if minValue is not None:
+        try:
+            assert integer >= minValue
+        except AssertionError:
+            raise ValueError("Integer is less than Minimum Value!")
+    # If a maximum value is supplied, compare it to the Integer
+    if maxValue is not None:
+        try:
+            assert integer <= maxValue
+        except AssertionError:
+            raise ValueError("Integer is greater than Maximum Value!")
+    return integer
+
+def validateFloat( floating_point, minValue=None, maxValue=None ):
+    try: # First we check whether the supplied parameter is an Int
+        assert isinstance(floating_point, float)
+    except AssertionError:
+        raise TypeError('Parameter is not a Floating Point!')
+    # If a minimum value is supplied, compare it to the Integer
+    if minValue is not None:
+        try:
+            assert floating_point >= minValue
+        except AssertionError:
+            raise ValueError("Float is less than Minimum Value!")
+    # If a maximum value is supplied, compare it to the Integer
+    if maxValue is not None:
+        try:
+            assert floating_point <= maxValue
+        except AssertionError:
+            raise ValueError("Float is greater than Maximum Value!")
+    return floating_point

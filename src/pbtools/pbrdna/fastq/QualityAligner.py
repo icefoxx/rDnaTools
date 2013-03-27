@@ -14,7 +14,7 @@ from ..io.FastqIO import FastqRecord, FastqReader, FastqWriter
 
 __version__ = "0.1"
 
-class FastqAligner(object):
+class QualityAligner(object):
     """
     Tool for aligning quality values from FASTQ files to trimmed and  
     gapped multi-sequence alignments of their sequences
@@ -76,7 +76,7 @@ class FastqAligner(object):
             assert ext in ['.fa', '.fsa', '.fasta', '.align']
         except:
             raise ValueError("'%s' is not a recognized FASTA file!" % self.aligned)
-        logging.info('Creating a FastqAligner for "%s"' % self.aligned)
+        logging.info('Creating a QualityAligner for "%s"' % self.aligned)
         logging.info('No log-file set for this process')
 
     #################
@@ -252,5 +252,5 @@ class FastqAligner(object):
 
 
 if __name__ == '__main__':
-    aligner = FastqAligner()
+    aligner = QualityAligner()
     aligner.run()

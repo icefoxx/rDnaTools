@@ -8,7 +8,7 @@ from ..io.FastqIO import FastqReader, FastqWriter
 
 __version__ = "0.1"
 
-class FastqMasker(object):
+class QualityMasker(object):
     """
     Tool for masking low-quality bases in FASTQ files 
     """
@@ -50,7 +50,7 @@ class FastqMasker(object):
 
     def initializeFromCall(self, fastqFile, outputFile, minQv):
         self.fastq = fastqFile
-        logging.info('Creating a FastqMasker for "%s"' % self.fastq)
+        logging.info('Creating a QualityMasker for "%s"' % self.fastq)
         # If no output file is set, default to STDOUT
         if outputFile is None:
             self.output = sys.stdout
@@ -113,5 +113,5 @@ class FastqMasker(object):
                 writer.writeRecord( fastqRecord )
 
 if __name__ == '__main__':
-    masker = FastqMasker()
+    masker = QualityMasker()
     masker.run()

@@ -5,30 +5,30 @@ import sys
 import logging
 import subprocess
 
-from pbtools.pbrdna._utils import which, fileExists, createDirectory
-from pbtools.pbrdna.io import BasH5Extractor
-from pbtools.pbrdna.io import SummaryReader
-from pbtools.pbrdna.fastq import QualityAligner
-from pbtools.pbrdna.fastq import QualityMasker
-from pbtools.pbrdna.mothur import MothurFactory
+from pbtools.pbrdna._utils import *
+from pbtools.pbrdna.io.BasH5IO import BasH5Extractor
+from pbtools.pbrdna.io.MothurIO import SummaryReader
+from pbtools.pbrdna.fastq.QualityAligner import QualityAligner
+from pbtools.pbrdna.fastq.QualityMasker import QualityMasker
+from pbtools.pbrdna.mothur.MothurTools import MothurRunner
 
 __version__ = "0.1"
 
-class rDnaPipeline(object):
+MIN_DIST = 0.001
+MAX_DIST = 0.5
+MIN_QV = 15
+DEFAULT_FRAC = 0.8
+MIN_LENGTH = 500
+MIN_RATIO = 0.5
+CLUSTER_METHODS = ('nearest', 'average', 'furthest')
+
+class rDnaPipelineRunner(object):
     """
     A tool for running a community analysis pipeline on PacBioData
     """
     #####################
     # Variable Defaults #
     #####################
-
-    MIN_DIST = 0.001
-    MAX_DIST = 0.5
-    MIN_QV = 15
-    DEFAULT_FRAC = 0.8
-    MIN_LENGTH = 500
-    MIN_RATIO = 0.5
-    CLUSTER_METHODS = ('nearest', 'average', 'furthest')
 
     ##########################
     # Initialization Methods #
@@ -56,23 +56,23 @@ class rDnaPipeline(object):
                             default=1, dest='numProc', type=int,
                             help="Number of processors to use")
         parser.add_argument('-f', '--fraction', metavar='FLOAT', 
-                            type=float, default=self.DEFAULT_FRAC,
+                            type=float, default=DEFAULT_FRAC,
                             help='Fraction of full-length to require of each read')
         parser.add_argument('-c', '--clustering_method', metavar='METHOD',
                             dest='clusteringMethod', default='average',
-                            choices=self.CLUSTER_METHODS,
+                            choices=CLUSTER_METHODS,
                             help="Distance algorithm to use in clustering")
         parser.add_argument('-o', '--output', dest='outputDir', metavar='DIR',
                             default='rna_pipeline_run',
                             help="Specify the output folder")
         parser.add_argument('-q', '--minimum_qv', type=int, metavar='INT', 
-                            dest='minQv', default=self.MIN_QV,
+                            dest='minQv', default=MIN_QV,
                             help='Minimun QV to allow after sequence masking')
         parser.add_argument('-l', '--minimum_length', type=int, metavar='INT', 
-                            dest='minLength', default=self.MIN_LENGTH,
+                            dest='minLength', default=MIN_LENGTH,
                             help='Minimun length sequence to allow after masking')
         parser.add_argument('-r', '--minimum_ratio', type=float, metavar='FLOAT',
-                            dest='minRatio', default=self.MIN_RATIO,
+                            dest='minRatio', default=MIN_RATIO,
                             help='Minimum ratio of retained bases to allow after masking')
         parser.add_argument('--disable_masking', action='store_true',
                             dest='disableMasking',
@@ -88,7 +88,7 @@ class rDnaPipeline(object):
                             help="Reference MSA for Chimera detection")
         parser.add_argument('--blasr', metavar='BLASR_PATH', 
                             help="Specify the path to the Blasr executable")
-        parser.add_argument('--mothur', metavar='MOTHUR_PATH', 
+        parser.add_argument('--mothur', metavar='MOTHUR_PATH', default='mothur',
                             help="Specify the path to the Mothur executable")
         parser.add_argument('--debug', action='store_true',
                             help="Turn on DEBUG message logging")
@@ -96,11 +96,6 @@ class rDnaPipeline(object):
         self.__dict__.update( vars(args) )
 
     def validateSettings(self):
-        # Searching for Mothur executable, and set the Mothur Process counter
-        self.mothur = which('mothur')
-        if self.mothur is None:
-           raise OSError('Mothur executable not found!')
-        self.processCount = 0
         # Validate the input file
         root, ext = self.splitRootFromExt( self.sequenceFile )
         if ext in ['.bas.h5', '.fofn']:
@@ -115,18 +110,12 @@ class rDnaPipeline(object):
         else:
             raise TypeError('Sequence file must be a bas.h5 file, a ' + \
                             'fasta file, or a fofn of multiple such files')
-        # Validate the Num_Processes argument
-        if self.numProc <= 0:
-            raise ValueError("Number of processes must be >= 1!")
-        # Validate the Distance argument
-        try:
-            dist = float(self.distance)
-        except TypeError:
-            raise TypeError("Distance is not a valid Float!")
-        if dist < self.MIN_DIST: 
-            raise ValueError("Distance must be > %s)" % self.MIN_DIST)
-        if dist > self.MAX_DIST:
-            raise ValueError("Distance must be < %s!" % self.MAX_DIST)
+        # Searching for Mothur executable, and set the Mothur Process counter
+        self.mothur = validateExecutable( self.mothur )
+        self.processCount = 0
+        # Validate numerical parameters
+        validateInt( self.numProc, minValue=0 )
+        validateFloat( self.distance, minValue=MIN_DIST, maxValue=MAX_DIST )
 
     def initializeOutput(self):
         # Create the Output directory
@@ -146,11 +135,11 @@ class rDnaPipeline(object):
         stdoutLog = os.path.join('log', 'mothur_stdout.log')
         stderrLog = os.path.join('log', 'mothur_stderr.log')
         self.logFile = os.path.join('log', 'rna_pipeline.log')
-        # Instantiate the MothurCommandFactory object
-        self.factory = MothurFactory( self.mothur, 
-                                      self.numProc, 
-                                      stdoutLog, 
-                                      stderrLog)
+        # Instantiate the MothurRunner object
+        self.factory = MothurRunner( self.mothur, 
+                                     self.numProc, 
+                                     stdoutLog, 
+                                     stderrLog)
 
     def initializeLogger(self):
         dateFormat = "%Y-%m-%d %I:%M:%S"
@@ -284,8 +273,8 @@ class rDnaPipeline(object):
         return outputFile
 
     def parseSummaryFile(self, summaryFile):
-        self.log.info('Preparing to run SummaryParser...')
-        parser = SummaryParser(summaryFile, self.fraction)
+        self.log.info('Preparing to run SummaryReader...')
+        parser = SummaryReader(summaryFile, self.fraction)
         self.log.info('Identifying full-length alignment positions...')
         start, end = parser.getFullLengthPositions()
         self.log.info('Full-length start is NAST Alignment position %s' % start)
@@ -335,17 +324,17 @@ class rDnaPipeline(object):
         return outputFile
 
     def addQualityToAlignment(self, fastqFile, alignFile):
-        outputFile = self.processSetup(alignFile, 'FastqAligner', 'fastq')
+        outputFile = self.processSetup(alignFile, 'QualityAligner', 'fastq')
         if not fileExists( outputFile ):
-            aligner = FastqAligner(fastqFile, alignFile, outputFile)
+            aligner = QualityAligner(fastqFile, alignFile, outputFile)
             aligner.run()
             self.processCleanup(outputFile)
         return outputFile
 
     def maskFastqSequences(self, fastqFile):
-        outputFile = self.processSetup(fastqFile, 'FastqMasker', 'masked.fastq')
+        outputFile = self.processSetup(fastqFile, 'QualityMasker', 'masked.fastq')
         if not fileExists( outputFile ):
-            masker = FastqMasker(fastqFile, outputFile, self.minQv)
+            masker = QualityMasker(fastqFile, outputFile, self.minQv)
             masker.run()
             self.processCleanup(outputFile)
         return outputFile
@@ -419,7 +408,6 @@ class rDnaPipeline(object):
         distanceMatrix = self.calculateDistanceMatrix( fileForClustering )
         self.clusterSequences( distanceMatrix )
 
-
 if __name__ == '__main__':
-    rdnap = rDnaPipeline()
+    rdnap = rDnaPipelineRunner()
     rdnap()
