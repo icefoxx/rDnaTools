@@ -9,7 +9,7 @@ if ("install" in sys.argv) and sys.version_info < (2, 7, 0):
 
 setup(
     name = 'rDnaTools',
-    version='0.1',
+    version='0.1.0',
     author='Brett Bowman',
     author_email='bbowman@pacificbiosciences.com',
     url='https://github.com/bnbowman/rDnaTools',
@@ -17,6 +17,7 @@ setup(
     license=open('LICENSES.txt').read(),
     packages = find_packages('src'),
     package_dir = {'':'src'},
+    scripts=['src/rDnaPipeline.py'],
     zip_safe = False,
     install_requires=[
         'h5py >= 2.0.1',
