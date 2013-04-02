@@ -37,7 +37,7 @@ import subprocess
 from pbtools.pbrdna.io.FastqIO import FastqReader, FastqWriter
 from pbtools.pbrdna.io.FastaIO import FastaRecord, FastaWriter  
 from pbtools.pbrdna._utils import createDirectory, validateInputFile, validateFloat
-from pbtools.pbrdna._utils import which, getZmw
+from pbtools.pbrdna._utils import which, getZmw, meanPQv
 
 DEFAULT_DIST = 0.03
 MIN_FULL_LENGTH = 1400
@@ -116,9 +116,12 @@ class ClusterSeparator(object):
 
     def parseSequenceData(self):
         self.sequenceData = {}
+        self.qualityData = {}
         for fastqRecord in FastqReader( self.ccsFile ):
             zmw = getZmw( fastqRecord.name )
+            fastqRecord.name = zmw
             self.sequenceData[zmw] = fastqRecord
+            self.qualityData[zmw] = meanPQv( fastqRecord )
 
     def parseDistances(self):
         distances = []
@@ -185,7 +188,7 @@ class ClusterSeparator(object):
                 handle.writeRecord( fastqRecord )
         return fastqFile
 
-    def outputClusterFasta(self, reads, count):
+    def outputClusterFasta( self, reads, count ):
         fastaFile = 'cluster%s.fasta' % count
         if os.path.exists( fastaFile ):
             return fastaFile
@@ -197,40 +200,41 @@ class ClusterSeparator(object):
                 handle.writeRecord( fastaRecord )
         return fastaFile
 
-    def pickReference(self, reads):
+    def pickReference( self, reads ):
         longReads = [read for read in reads
                           if len(read.sequence) > self.minRefLength]
-        if len(longReads) == 1:
-            return longReads[0]
-        elif longReads:
+        if longReads:
             return self.findLowestErrorRead( reads )
         # If no 'full-length' reads are present, simply return the longest
         else:
             return self.findLongestRead( reads )
 
-    def findLowestErrorRead( reads ):
-        qvTuples = []
+    def findLowestErrorRead( self, reads ):
+        pQvs = [self.qualityData[read.name] for read in reads]
+        maxQv = max(pQvs)
+        lowestErrorReads = [read for read in reads
+                                 if self.qualityData[read.name] == maxQv]
+        return lowestErrorReads[0]
 
-    def findLongestRead(self, reads):
+    def findLongestRead( self, reads ):
         lengths = [len(read.sequence) for read in reads]
         maxLength = max(lengths)
         longestReads = [read for read in reads
                              if len(read.sequence) == maxLength]
         return longestReads[0]
 
-    def outputClusterReference(self, reference, count):
+    def outputReferenceFasta( self, reference, count):
         print "Creating reference sequence for Cluster #%s" % count
-        referenceFile = 'cluster%s_reference.fasta' % count
+        referenceFile = 'cluster%s_ref.fasta' % count
         if os.path.exists( referenceFile ):
             return referenceFile
-        # Rename the "Reference" sequence to the cluster
-        referenceFasta = FastaRecord("Cluster%s" % count,
-                                     reference.sequence)
         with FastaWriter( referenceFile ) as handle:
+            referenceFasta = FastaRecord( reference.name,
+                                          reference.sequence )
             handle.writeRecord( referenceFasta )
         return referenceFile
 
-    def outputRepresentativeRead(self, representativeRead, count):
+    def outputRepresentativeRead( self, representativeRead, count ):
         print "Creating representative sequence file Cluster #%s" % count
         representativeFile = 'cluster%s_represent.fastq' % count
         if os.path.exists( representativeFile ):
@@ -239,7 +243,7 @@ class ClusterSeparator(object):
             handle.writeRecord( representativeRead )
         return representativeFile
 
-    def __call__(self):
+    def __call__( self ):
         self.parseSequenceData()
         # Select the appropriate distance, and parse the matching clusters
         distances = self.parseDistances()

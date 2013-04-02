@@ -11,6 +11,8 @@ from pbtools.pbrdna.io.MothurIO import SummaryReader
 from pbtools.pbrdna.fastq.QualityAligner import QualityAligner
 from pbtools.pbrdna.fastq.QualityMasker import QualityMasker
 from pbtools.pbrdna.mothur.MothurTools import MothurRunner
+from pbtools.pbrdna.cluster.ClusterSeparator import ClusterSeparator
+from pbtools.pbrdna.resequence.DagConTools import DagConRunner
 
 __version__ = "0.1"
 
@@ -74,18 +76,21 @@ class rDnaPipelineRunner(object):
         parser.add_argument('-r', '--minimum_ratio', type=float, metavar='FLOAT',
                             dest='minRatio', default=MIN_RATIO,
                             help='Minimum ratio of retained bases to allow after masking')
-        parser.add_argument('--disable_masking', action='store_true',
-                            dest='disableMasking',
-                            help="Turn off the low-quality masking step")
-        parser.add_argument('--disable_resequencing', action='store_true',
-                            dest='disableResequencing',
-                            help="Turn off the resequencing step")
         parser.add_argument('-A', '--alignment_reference', metavar='REF',
                             default='silva.both.align', dest='alignmentRef',
                             help="Reference MSA for aligning query sequences")
         parser.add_argument('-C', '--chimera_reference', metavar='REF',
                             default='silva.gold.align', dest='chimeraRef',
                             help="Reference MSA for Chimera detection")
+        parser.add_argument('--disable_masking', action='store_false',
+                            dest='enableMasking',
+                            help="Turn off the low-quality Masking step")
+        parser.add_argument('--disable_clustering', action='store_false',
+                            dest='enableClustering',
+                            help="Turn off the Clustering and Resequencing steps")
+        parser.add_argument('--disable_consensus', action='store_false',
+                            dest='enableConsensus',
+                            help="Turn off the Consensus step")
         parser.add_argument('--blasr', metavar='BLASR_PATH', 
                             help="Specify the path to the Blasr executable")
         parser.add_argument('--mothur', metavar='MOTHUR_PATH', default='mothur',
@@ -102,14 +107,19 @@ class rDnaPipelineRunner(object):
             self.dataType = 'bash5'
         elif ext in ['.fq', '.fastq']:
             self.dataType = 'fastq'
-            self.disableResequencing = True
         elif ext in ['.fa', '.fsa', '.fasta']:
             self.dataType = 'fasta'
-            self.disableMasking = True
-            self.disableResequencing = True
+            self.enableMasking = False
+            self.enableConsensus = False
         else:
             raise TypeError('Sequence file must be a bas.h5 file, a ' + \
                             'fasta file, or a fofn of multiple such files')
+        # If Clustering was disabled, also disable the consensus process
+        if not self.enableClustering:
+            self.enableConsensus = False
+        # If Consensus is enabled, initialize the appropriate tool
+        if self.enableConsensus:
+            self.consensusTool = DagConRunner('gcon.py', 'r')
         # Searching for Mothur executable, and set the Mothur Process counter
         self.mothur = validateExecutable( self.mothur )
         self.processCount = 0
@@ -366,6 +376,14 @@ class rDnaPipelineRunner(object):
             self.processCleanup(outputFile)
         return outputFile
 
+    def separateClusterSequences(self, listFile, sequenceFile):
+        self.processSetup(listFile, 'ClusterSeparator', 'NA')
+        if not fileExists( 'reseq' ):
+            separator = ClusterSeparator(listFile, sequenceFile, self.distance)
+            separator()
+            self.processCleanup( 'reseq' )
+        return 'reseq'
+
     def __call__(self):
         # Extract and convert the data to FASTA format as needed
         if self.dataType == 'bash5':
@@ -391,22 +409,26 @@ class rDnaPipelineRunner(object):
         noChimeraFile = self.removeSequences( screenedFile, chimeraIds )
         # Filter out un-used columns to speed up re-alignment and clustering
         filteredFile = self.filterSequences( noChimeraFile )
-        # If Masking is disabled, use the filtered sequence file for
-        # Clustering and skip to that step
-        if self.disableMasking:
-            fileForClustering = filteredFile
-        # Otherwise, create an aligned FASTQ, mask the low-quality bases,
-        #   and emove any sequences that have to few bases remaining
-        if not self.disableMasking:
+        # If masking is enabled, create an aligned FASTQ, mask the 
+        # low-quality bases and remove over-masked reads
+        if self.enableMasking:
             alignedFastqFile = self.addQualityToAlignment( fastqFile, filteredFile )
             maskedFastq = self.maskFastqSequences( alignedFastqFile )
             maskedFasta = self.convertFastqToFasta( maskedFastq )
             screenedFasta = self.screenSequences(maskedFasta,
                                                  minLength=self.minLength)
             fileForClustering = screenedFasta
-        # Calculate sequence distances and cluster
-        distanceMatrix = self.calculateDistanceMatrix( fileForClustering )
-        self.clusterSequences( distanceMatrix )
+        # Otherwise if masking is disabled, use the filtered sequence file
+        # for Clustering as-is
+        else:
+            fileForClustering = filteredFile
+        # If enabled, calculate sequence distances and cluster
+        if self.enableClustering:
+            distanceMatrix = self.calculateDistanceMatrix( fileForClustering )
+            listFile = self.clusterSequences( distanceMatrix )
+        # If enabled, generate a consensus for each cluster from above
+        if self.enableConsensus:
+            clusterFolder = separateClusterSequences( listFile, fastqFile )
 
 if __name__ == '__main__':
     rdnap = rDnaPipelineRunner()
