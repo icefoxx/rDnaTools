@@ -16,14 +16,17 @@ sequences, provided that suitable reference sequences are supplied.
 
 ## Requirements ##
 
-The core functionality of rDnaTools - 
+The core functionality of rDnaTools is built upon Python2.7 using the
+pbcore framework for accessing PacBio data files.  In addition rDnaTools
+wraps the functionality from a number of stand-alone commandline tools
+that must available for the package to function
 * Python 2.7 (www.python.org)
 * pbcore (www.github.com/PacificBiosciences/pbcore)
 * Blasr (www.github.com/PacificBiosciences/blasr)
 * Mothur (www.mothur.org)
 
-Additionally, rDnaTools includes the capability to generate high-quality
-consensus sequences from clusters of ribosomal DNA reads using algorithms 
+rDnaTools also includes the capability to generate high-quality consensus 
+sequences from clusters of ribosomal DNA reads using algorithms 
 included in the Pacific Biosciences SMRT Analysis suite.
 * SMRTanalysis (www.pacbiodevnet.com)
 
@@ -39,7 +42,7 @@ sequential series of analyses, similar to Mothur`s Batch Mode.
 
 The rDnaResequencer tool generates consensus sequences from clusters of
 PacBio ribosomal DNA sequences.  The Resequencer tool can be called either
-standalone, or as part of an rDnaPipeline.
+independently, or as part of the rDnaPipeline.
 
 ## Citation ##
 

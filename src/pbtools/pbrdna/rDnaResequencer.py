@@ -32,8 +32,8 @@ import sys
 import logging
 import subprocess
 
-from io.RichFastqIO import FastqReader, FastqWriter
-from io.RichFastaIO import FastaRecord, FastaWriter  
+from io.FastqIO import FastqReader, FastqWriter
+from io.FastaIO import FastaRecord, FastaWriter  
 
 from _utils import createDirectory, validateInputFile, validateOutputFile
 from _utils import which, getZmw
