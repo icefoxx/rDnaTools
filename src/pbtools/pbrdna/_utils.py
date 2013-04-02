@@ -1,9 +1,10 @@
 import os
 import sys
+from collections import namedtuple
+
+import numpy as np
 
 from pbtools.pbrdna.io.FastqIO import FastqRecord
-
-from collections import namedtuple
 
 BlasrM1 = namedtuple('BlasrM1', ['qname', 'tname', 'qstrand', 'tstrand',
                                  'score', 'pctsimilarity', 
