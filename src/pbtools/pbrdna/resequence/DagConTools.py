@@ -73,19 +73,21 @@ class DagConRunner(object):
     # Instance Methods #
     ####################
 
-    def runGcon(self, inputFile, outputFile, refFile):
+    def runGcon(self, inputFile, outputFile, refFile=None):
+        if outputFile is None:
+            outputFile = self.getOutputFileName( inputFile )
         if self.mode == 'r':
             assert refFile is not None
             p = subprocess.Popen( [self.executable, 
                                    self.mode,
-                                   self.inputFile,
-                                   self.refFile,
+                                   inputFile,
+                                   refFile,
                                    '-o', outputFile] )
             p.wait()
         elif self.mode == 'd':
             p = subprocess.Popen( [self.executable, 
                                    self.mode,
-                                   self.inputFile,
+                                   inputFile,
                                    '-o', outputFile] )
             p.wait()
         return outputFile
@@ -93,16 +95,12 @@ class DagConRunner(object):
     def getOutputFile(self, inputFile):
         path, filename = os.path.split( inputFile )
         root, ext = os.path.splitext( filename )
-        outputFile = root + '_consensus' + ext
+        outputFile = root + '_consensus.fa'
         return os.path.join( path, outputFile )
 
     def __call__(self, inputFile, refFile=None):
         outputFile = self.getOutputFile( inputFile )
         if os.path.exists( outputFile ):
             return outputFile
-        if self.script == 'gcon.py':
+        elif self.script == 'gcon.py':
             return self.runGcon( inputFile, outputFile, refFile )
-
-if __name__ == '__main__':
-    print "Run 'gcon.py' directly instead of calling this script!"
-    raise SystemExit

@@ -51,11 +51,11 @@ class ClusterSeparator(object):
     # Initialization Methods #
     ##########################
 
-    def __init__(self, listFile=None, ccsFile=None, distance=None):
+    def __init__(self, listFile=None, ccsFile=None, distance=None, output=None):
         if listFile is None or ccsFile is None:
             self.initializeFromArgs()
         else:
-            self.initializeFromCall(listFile, ccsFile, distance)
+            self.initializeFromCall(listFile, ccsFile, distance, output)
         self.validateSettings()
 
     def initializeFromArgs(self):
@@ -77,16 +77,22 @@ class ClusterSeparator(object):
                             help="Output reference sequences for each cluster")
         parser.add_argument('-o', '--outputDir', default='reseq',
                             help="Specify a directory for output files")
+        parser.add_argument('-s', '--summary', dest='output', default=None,
+                            help="Output a summary of the individual clusters")
         args = parser.parse_args()
         self.__dict__.update( vars(args) )
 
-    def initializeFromCall(self, listFile, seqFile, distance):
+    def initializeFromCall(self, listFile, ccsFile, distance, output):
         self.listFile = listFile
-        self.sequenceFile = seqFile
+        self.ccsFile = ccsFile
         self.distance = DEFAULT_DIST if distance is None else distance
+        self.output = output
         self.outputDir = 'reseq'
+        self.outputFastq = False
+        self.outputReference = True
+        self.minRefLength = MIN_FULL_LENGTH
 
-    def validateSettings(self):
+    def validateSettings( self ):
         # Check the values of the supplied input files
         self.listFile = validateInputFile( self.listFile, ['.list'])
         self.ccsFile = validateInputFile( self.ccsFile, ['.fq', '.fastq'])
@@ -94,7 +100,10 @@ class ClusterSeparator(object):
         self.distance = validateFloat( self.distance, 
                                        minValue=0.001, 
                                        maxValue=0.5)
+
+    def initializeOutputFolder( self ):
         # Create the output directory if needed and move into it
+        self.origin=   os.getcwd()
         createDirectory( self.outputDir )
         os.chdir( self.outputDir )
 
@@ -243,7 +252,17 @@ class ClusterSeparator(object):
             handle.writeRecord( representativeRead )
         return representativeFile
 
+    def outputClusterFileList( self, clusterFiles ):
+        print "Writing out the names of the individual cluster files"
+        with open( self.output, 'w') as handle:
+            for clusterFile, referenceFile in clusterFiles:
+                clusterPath = os.path.join( self.outputDir, clusterFile )
+                referencePath = os.path.join( self.outputDir, referenceFile )
+                handle.write('%s\t%s\n' % (clusterPath, referencePath))
+        return self.output
+
     def __call__( self ):
+        self.initializeOutputFolder()
         self.parseSequenceData()
         # Select the appropriate distance, and parse the matching clusters
         distances = self.parseDistances()
@@ -251,17 +270,25 @@ class ClusterSeparator(object):
         clusters = self.parseClusters( distance )
         # Trim the cluster neams and iterate, outputing each subset
         trimmedClusters = self.trimClusterNames( clusters )
+        clusterFiles = []
         for count, cluster in enumerate( trimmedClusters ):
             count = str(count+1).zfill(4)
             print "Analyzing cluster #%s now..." % (count)
             reads = self.getClusterReads( cluster )
+            clusterFile = self.outputClusterFasta( reads, count )
             if self.outputFastq:
                 self.outputClusterFastq( reads, count )
-            if self.outputReference:
+            if len(reads) > 1 and self.outputReference:
                 reference = self.pickReference( reads )
-                self.outputReferenceFasta( reference, count )
-            self.outputClusterFasta( reads, count )
-        # Finally we combine and trim all of the output Files
+                referenceFile = self.outputReferenceFasta( reference, count )
+                clusterFiles.append( (clusterFile, referenceFile) )
+            else:
+                clusterFiles.append( (clusterFile, 'None') )
+        # Return to the origin directory and output the results summary
+        os.chdir( self.origin )
+        if self.output:
+            return self.outputClusterFileList( clusterFiles )
+        return
 
 if __name__ == '__main__':
     separator = ClusterSeparator()

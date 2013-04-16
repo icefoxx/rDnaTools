@@ -24,13 +24,10 @@ MIN_LENGTH = 500
 MIN_RATIO = 0.5
 CLUSTER_METHODS = ('nearest', 'average', 'furthest')
 
-class rDnaPipelineRunner(object):
+class rDnaPipeline( object ):
     """
     A tool for running a community analysis pipeline on PacBioData
     """
-    #####################
-    # Variable Defaults #
-    #####################
 
     ##########################
     # Initialization Methods #
@@ -237,6 +234,11 @@ class rDnaPipelineRunner(object):
             self.log.info('"%s" not created - process failure!\n' % outputFile)
             raise IOError('"%s" not created - process failure!' % outputFile)
 
+    def writeDummyFile(self, dummyFile):
+        with open(dummyFile, 'w') as handle:
+            handle.write('DONE')
+        return dummyFile
+
     def convertFastqToFasta(self, fastqFile):
         outputFile = self.processSetup(fastqFile, 'Fastq.Info', 'fasta')
         if not fileExists( outputFile ):
@@ -377,12 +379,67 @@ class rDnaPipelineRunner(object):
         return outputFile
 
     def separateClusterSequences(self, listFile, sequenceFile):
-        self.processSetup(listFile, 'ClusterSeparator', 'NA')
-        if not fileExists( 'reseq' ):
-            separator = ClusterSeparator(listFile, sequenceFile, self.distance)
+        outputFile = self.processSetup(listFile, 'ClusterSeparator', 'list.clusters')
+        if not fileExists( outputFile ):
+            separator = ClusterSeparator( listFile, 
+                                          sequenceFile, 
+                                          self.distance, 
+                                          outputFile )
             separator()
-            self.processCleanup( 'reseq' )
-        return 'reseq'
+            self.processCleanup( outputFile )
+        return outputFile
+
+    def generateConsensusSequences(self, clusterListFile):
+        outputFile = self.processSetup(clusterListFile, 'ClusterResequencer', 'consensus')
+        if not fileExists( outputFile ):
+            consensusFiles = []
+            with open( clusterListFile ) as handle:
+                for line in handle:
+                    sequenceFile, referenceFile = line.strip().split()
+                    if referenceFile.endswith('None'):
+                        consensusFiles.append( (sequenceFile, 'None') )
+                    else:
+                        consensus = self.consensusTool( sequenceFile, referenceFile )
+                        consensusFiles.append( (referenceFile, consensus) )
+            with open( outputFile, 'w' ) as handle:
+                for filenamePair in consensusFiles:
+                    handle.write('%s\t%s\n' % filenamePair)
+            self.processCleanup( outputFile )
+        return outputFile
+
+    def cleanupConsensusFolder( self, consensusFile ):
+        outputFile = self.processSetup(consensusFile, 'ConsensusCleanup', 'consensus.cleanup')
+        if not fileExists( outputFile ):
+            reseqPath = os.path.join( os.getcwd(), 'reseq' )
+            for filename in os.listdir( reseqPath ):
+                filePath = os.path.join( reseqPath, filename )
+                if filePath.endswith('_input.fa'):
+                    os.remove( filePath )
+                elif filePath.endswith('_input.fa.aln'):
+                    os.remove( filePath )
+                elif filePath.endswith('_input.fa.aln_unsorted'):
+                    os.remove( filePath )
+            self.writeDummyFile( outputFile )
+        return outputFile
+
+    def selectFinalSequences( self, consensusFile ):
+        outputFile = self.processSetup(consensusFile, 'SequenceSelector', 'consensus.selected')
+        if not fileExists( outputFile ):
+            selectedFiles = []
+            with open( consensusFile ) as handle:
+                for line in handle:
+                    referenceFile, consensusFile = line.strip().split()
+                    if consensusFile.endswith('None'):
+                        selectedFiles.append( referenceFile )
+                    elif fasta_count( consensusFile ) == 1:
+                        selectedFiles.append( consensusFile )
+                    else:
+                        selectedFiles.append( referenceFile )
+            with open( outputFile, 'w' ) as handle:
+                for filename in selectedFiles:
+                    handle.write(filename + '\n')
+            self.processCleanup( outputFile )
+        return outputFile
 
     def __call__(self):
         # Extract and convert the data to FASTA format as needed
@@ -415,8 +472,8 @@ class rDnaPipelineRunner(object):
             alignedFastqFile = self.addQualityToAlignment( fastqFile, filteredFile )
             maskedFastq = self.maskFastqSequences( alignedFastqFile )
             maskedFasta = self.convertFastqToFasta( maskedFastq )
-            screenedFasta = self.screenSequences(maskedFasta,
-                                                 minLength=self.minLength)
+            screenedFasta = self.screenSequences( maskedFasta,
+                                                  minLength=self.minLength)
             fileForClustering = screenedFasta
         # Otherwise if masking is disabled, use the filtered sequence file
         # for Clustering as-is
@@ -428,8 +485,12 @@ class rDnaPipelineRunner(object):
             listFile = self.clusterSequences( distanceMatrix )
         # If enabled, generate a consensus for each cluster from above
         if self.enableConsensus:
-            clusterFolder = separateClusterSequences( listFile, fastqFile )
+            clusterListFile = self.separateClusterSequences( listFile, fastqFile )
+            consensusFile = self.generateConsensusSequences( clusterListFile )
+            self.cleanupConsensusFolder( consensusFile )
+            selectedFile = self.selectFinalSequences( consensusFile )
+
 
 if __name__ == '__main__':
-    rdnap = rDnaPipelineRunner()
+    rdnap = rDnaPipeline()
     rdnap()

@@ -4,6 +4,7 @@ from collections import namedtuple
 
 import numpy as np
 
+from pbtools.pbrdna.io.FastaIO import FastaReader
 from pbtools.pbrdna.io.FastqIO import FastqRecord
 
 BlasrM1 = namedtuple('BlasrM1', ['qname', 'tname', 'qstrand', 'tstrand',
@@ -11,6 +12,16 @@ BlasrM1 = namedtuple('BlasrM1', ['qname', 'tname', 'qstrand', 'tstrand',
                                  'tstart', 'tend', 'tlength',
                                  'qstart', 'qend', 'qlength',
                                  'ncells'])
+
+def fasta_count( fasta_file ):
+    count = 0
+    try:
+        for record in FastaReader( fasta_file ):
+            if len(record.sequence) > 0:
+                count += 1
+    except:
+        pass
+    return count
 
 def meanP( record ):
     try:
