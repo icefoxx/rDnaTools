@@ -4,7 +4,7 @@ import logging
 
 from numpy import where
 
-from ..io.FastqIO import FastqReader, FastqWriter
+from pbrdna.io.FastqIO import FastqReader, FastqWriter
 
 __version__ = "0.1"
 

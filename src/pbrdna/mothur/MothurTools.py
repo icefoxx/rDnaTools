@@ -1,13 +1,14 @@
 import logging
 import subprocess
 
-from .._utils import which, fileExists, isExe
+from pbrdna._utils import which, fileExists, isExe
 
 __version__ = "0.1"
 
 VALID_COMMANDS = frozenset(['fastq.info', 'align.seqs', 'chimera.uchime',
                             'screen.seqs', 'remove.seqs', 'filter.seqs', 
-                            'summary.seqs', 'dist.seqs', 'cluster', 
+                            'summary.seqs', 'dist.seqs', 'unique.seqs'
+                            'trim.seqs', 'pre.cluster', 'cluster', 
                             'set.logfile'])
 
 NUMPROC_COMMANDS = frozenset(['align.seqs', 'chimera.uchime', 'screen.seqs',
@@ -16,7 +17,7 @@ NUMPROC_COMMANDS = frozenset(['align.seqs', 'chimera.uchime', 'screen.seqs',
 VALID_PARAMS = frozenset(['fasta', 'fastq', 'qfile', 'reference', 'name',
                           'flip', 'start', 'end', 'minlength', 'processors',
                           'vertical', 'calc', 'output', 'phylip', 'method',
-                          'accnos'])
+                          'accnos', 'qaverage', 'diffs', 'name'])
 
 class MothurCommand(object):
     """
@@ -95,12 +96,17 @@ class MothurJob(object):
     def callString(self):
         return '#%s' % self.commandString
 
+    @property
+    def displayString(self):
+        return '\n\t%s\n\t\t%s' %(self.mothur,
+                                  "\n\t\t".join(map(str, self.commands)) )
+
     def __str__(self):
         return '%s "%s"' % (self.mothur,
                             self.callString)
 
     def __call__(self):
-        logging.info('Executing the following command:\n\t%s' % str(self))
+        logging.info('Executing the following command: %s' % self.displayString)
         p = subprocess.Popen( [self.mothur, self.callString], 
                               stdout=self.stdout, stderr=self.stderr )
         stdout, stderr = p.communicate()

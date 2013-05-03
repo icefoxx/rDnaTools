@@ -4,8 +4,8 @@ from collections import namedtuple
 
 import numpy as np
 
-from pbtools.pbrdna.io.FastaIO import FastaReader
-from pbtools.pbrdna.io.FastqIO import FastqRecord
+from pbrdna.io.FastaIO import FastaReader
+from pbrdna.io.FastqIO import FastqRecord
 
 BlasrM1 = namedtuple('BlasrM1', ['qname', 'tname', 'qstrand', 'tstrand',
                                  'score', 'pctsimilarity', 
@@ -42,7 +42,10 @@ def pValueToQv( pValue ):
     return -10 * np.log10( pValue )
 
 def fileExists( filename ):
-    return os.path.exists(filename) and (os.path.getsize(filename) > 0)
+    return os.path.exists( filename ) and os.path.getsize( filename ) > 0
+
+def allFilesExist( filenames ):
+    return all( map(fileExists, filenames) )
 
 def isExe( filePath ):
     if filePath is None:
@@ -52,6 +55,17 @@ def isExe( filePath ):
 def getZmw( read ):
     parts = read.split('/')
     return '/'.join(parts[0:2])
+
+def splitRootFromExt( inputFile ):
+    root, ext = os.path.splitext( inputFile )
+    if ext == '.h5':
+        root, ext = os.path.splitext( root )
+        return (root, ext+'.h5')
+    return (root, ext)
+
+def predictOutputFile( inputFile, outputType ):
+    root, ext = os.path.splitext( inputFile )
+    return '{0}.{1}'.format(root, outputType)
 
 def returnEmpty():
     return []

@@ -34,10 +34,10 @@ import sys
 import logging
 import subprocess
 
-from pbtools.pbrdna.io.FastqIO import FastqReader, FastqWriter
-from pbtools.pbrdna.io.FastaIO import FastaRecord, FastaWriter  
-from pbtools.pbrdna._utils import createDirectory, validateInputFile, validateFloat
-from pbtools.pbrdna._utils import which, getZmw, meanPQv
+from pbrdna.io.FastqIO import FastqReader, FastqWriter
+from pbrdna.io.FastaIO import FastaRecord, FastaWriter  
+from pbrdna._utils import createDirectory, validateInputFile, validateFloat
+from pbrdna._utils import which, getZmw, meanPQv
 
 DEFAULT_DIST = 0.03
 MIN_FULL_LENGTH = 1400
